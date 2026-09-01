@@ -1,0 +1,283 @@
+```groovy
+pipeline {
+    agent any
+    parameters {
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['dev', 'stage', 'prod'],
+            description: 'Target environment for deployment'
+        )
+
+        choice(
+            name: 'ACTION',
+            choices: ['create', 'delete'],
+            description: 'Choose create or delete infrastructure'
+        )
+
+        booleanParam(
+            name: 'AUTO_APPROVE',
+            defaultValue: false,
+            description: 'Automatically approve Terraform apply'
+        )
+    }
+
+    environment {
+        AWS_DEFAULT_REGION = 'eu-west-1'
+
+        TF_STATE_BUCKET = 'terraform-state-bucket-cbz-kharadi-4'
+        TF_STATE_REGION = 'eu-west-1'
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+
+                script {
+                    env.WORKSPACE_PATH =
+                        "${WORKSPACE}/infra/global/env/${params.ENVIRONMENT}"
+
+                    echo "Environment: ${params.ENVIRONMENT}"
+                    echo "Terraform directory: ${env.WORKSPACE_PATH}"
+                }
+            }
+        }
+
+
+        stage('Verify Terraform') {
+            steps {
+                sh """
+                    cd ${env.WORKSPACE_PATH}
+
+                    terraform version
+                """
+            }
+        }
+
+
+        stage('Terraform Init') {
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-credentials']
+                ]) {
+
+                    sh """
+                        cd ${env.WORKSPACE_PATH}
+
+                        cat > backend.tf << EOF
+terraform {
+  backend "s3" {
+    bucket         = "terraform-state-bucket-cdec41"
+    key            = "global/${params.ENVIRONMENT}/terraform-global.tfstate"
+    region         = "eu-west-1"
+    encrypt        = true
+    dynamodb_table = "terraform-state-lock"
+    use_lockfile   = true
+  }
+}
+EOF
+
+                        rm -rf .terraform
+                        rm -f terraform.tfstate*
+                        rm -f .terraform.lock.hcl
+
+                        terraform init
+                    """
+                }
+            }
+        }
+
+
+        stage('Terraform Plan') {
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-credentials']
+                ]) {
+
+                    script {
+
+                        if (params.ACTION == 'delete') {
+
+                            sh """
+                                cd ${env.WORKSPACE_PATH}
+
+                                terraform plan \
+                                  -destroy \
+                                  -out=tfplan-${params.ENVIRONMENT}.out
+                            """
+
+                        } else {
+
+                            sh """
+                                cd ${env.WORKSPACE_PATH}
+
+                                terraform plan \
+                                  -out=tfplan-${params.ENVIRONMENT}.out
+                            """
+                        }
+                    }
+                }
+            }
+
+            post {
+                always {
+                    archiveArtifacts(
+                        artifacts: "infra/global/env/${params.ENVIRONMENT}/tfplan-${params.ENVIRONMENT}.out",
+                        fingerprint: true,
+                        allowEmptyArchive: true
+                    )
+                }
+            }
+        }
+
+
+        stage('Terraform Apply') {
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-credentials']
+                ]) {
+
+                    script {
+
+                        if (params.AUTO_APPROVE) {
+
+                            sh """
+                                cd ${env.WORKSPACE_PATH}
+
+                                terraform apply \
+                                  -auto-approve \
+                                  tfplan-${params.ENVIRONMENT}.out
+                            """
+
+                        } else {
+
+                            if (params.ACTION == 'delete') {
+
+                                input(
+                                    message: "⚠️ DELETE Route 53 infrastructure for ${params.ENVIRONMENT}?",
+                                    ok: 'Yes, Delete'
+                                )
+
+                            } else {
+
+                                input(
+                                    message: "Apply Terraform changes for ${params.ENVIRONMENT}?",
+                                    ok: 'Apply'
+                                )
+                            }
+
+                            sh """
+                                cd ${env.WORKSPACE_PATH}
+
+                                terraform apply \
+                                  tfplan-${params.ENVIRONMENT}.out
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+
+        stage('Output Values') {
+            when {
+                expression {
+                    params.ACTION == 'create'
+                }
+            }
+
+            steps {
+                sh """
+                    cd ${env.WORKSPACE_PATH}
+
+                    echo "=========================================="
+                    echo " Route 53 Infrastructure Created"
+                    echo "=========================================="
+
+                    terraform output
+
+                    terraform output -json > terraform-outputs.json
+                """
+
+                archiveArtifacts(
+                    artifacts: "infra/global/env/${params.ENVIRONMENT}/terraform-outputs.json",
+                    fingerprint: true
+                )
+            }
+        }
+
+
+        stage('Delete Confirmation') {
+            when {
+                expression {
+                    params.ACTION == 'delete'
+                }
+            }
+
+            steps {
+                echo "=========================================="
+                echo " Route 53 Infrastructure Deleted"
+                echo "=========================================="
+                echo "Environment: ${params.ENVIRONMENT}"
+            }
+        }
+    }
+
+
+    post {
+
+        always {
+            script {
+
+                sh """
+                    cd ${env.WORKSPACE_PATH}
+
+                    rm -f tfplan-${params.ENVIRONMENT}.out
+                """
+            }
+        }
+
+
+        success {
+            script {
+
+                if (params.ACTION == 'delete') {
+
+                    echo "✅ Route 53 infrastructure deleted successfully for ${params.ENVIRONMENT}!"
+
+                } else {
+
+                    echo "✅ Route 53 infrastructure created successfully for ${params.ENVIRONMENT}!"
+                }
+            }
+        }
+
+
+        failure {
+            script {
+
+                if (params.ACTION == 'delete') {
+
+                    echo "❌ Route 53 infrastructure deletion failed for ${params.ENVIRONMENT}"
+
+                } else {
+
+                    echo "❌ Route 53 infrastructure creation failed for ${params.ENVIRONMENT}"
+                }
+            }
+
+            echo "Check the Jenkins build logs for more details."
+            echo "Build URL: ${env.BUILD_URL}"
+        }
+
+
+        unstable {
+            echo "⚠️ Jenkins build completed with warnings."
+        }
+    }
+}
+```
