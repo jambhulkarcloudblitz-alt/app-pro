@@ -20,9 +20,9 @@ pipeline {
 
     stages {
 
-        stage('CHECKOUT') {
+        stage('PULL') {
             steps {
-                checkout scm
+                git branch: 'dev', url: 'https://github.com/jambhulkarcloudblitz-alt/app-pro.git'
             }
         }
 
