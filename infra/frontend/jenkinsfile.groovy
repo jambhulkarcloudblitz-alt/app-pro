@@ -1,4 +1,4 @@
-
+```groovy
 pipeline {
 
     agent any
@@ -37,7 +37,7 @@ pipeline {
 
                 script {
                     env.WORKSPACE_PATH =
-                        "${WORKSPACE}/infra/backend/env/${params.ENVIRONMENT}"
+                        "${WORKSPACE}/infra/frontend/env/${params.ENVIRONMENT}"
 
                     echo "Environment: ${params.ENVIRONMENT}"
                     echo "Terraform directory: ${env.WORKSPACE_PATH}"
@@ -58,48 +58,16 @@ pipeline {
         }
 
 
-        // stage('Terraform Init') {
-        //     steps {
-
-        //         withCredentials([
-        //             [$class: 'AmazonWebServicesCredentialsBinding',
-        //              credentialsId: 'aws-credentials']
-        //         ]) {
-
-        //             sh """
-        //                 cd ${env.WORKSPACE_PATH}
-
-        //                 terraform init
-        //             """
-        //         }
-        //     }
-        // }
         stage('Terraform Init') {
             steps {
+
                 withCredentials([
                     [$class: 'AmazonWebServicesCredentialsBinding',
                      credentialsId: 'aws-credentials']
                 ]) {
 
                     sh """
-                        cd infra/backend/env/${ENVIRONMENT}
-
-                        cat > backend.tf << EOF
-                    terraform {
-                    backend "s3" {
-                        bucket         = "terraform-state-bucket-cbz-kharadi-4"
-                        key            = "backend/${params.ENVIRONMENT}/terraform-global.tfstate"
-                        region         = "eu-west-1"
-                        encrypt        = true
-                        dynamodb_table = "terraform-state-lock"
-                        use_lockfile   = true
-                    }
-                    }
-                    EOF
-
-                        rm -rf .terraform
-                        rm -f terraform.tfstate*
-                        rm -f .terraform.lock.hcl
+                        cd ${env.WORKSPACE_PATH}
 
                         terraform init
                     """
@@ -174,7 +142,7 @@ pipeline {
                             if (params.ACTION == 'delete') {
 
                                 input(
-                                    message: "⚠️ DELETE Backend/EKS infrastructure for ${params.ENVIRONMENT}?",
+                                    message: "⚠️ DELETE Frontend/S3 infrastructure for ${params.ENVIRONMENT}?",
                                     ok: 'Yes, Delete'
                                 )
 
@@ -187,7 +155,7 @@ pipeline {
                             } else {
 
                                 input(
-                                    message: "Apply Backend/EKS changes for ${params.ENVIRONMENT}?",
+                                    message: "Apply Frontend/S3 changes for ${params.ENVIRONMENT}?",
                                     ok: 'Apply'
                                 )
 
@@ -218,44 +186,11 @@ pipeline {
                     cd ${env.WORKSPACE_PATH}
 
                     echo "=========================================="
-                    echo " Backend/EKS Infrastructure Created"
+                    echo " Frontend S3 Infrastructure Created"
                     echo "=========================================="
 
                     terraform output
                 """
-            }
-        }
-
-
-        stage('Verify EKS Cluster') {
-
-            when {
-                expression {
-                    params.ACTION == 'create'
-                }
-            }
-
-            steps {
-
-                withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding',
-                     credentialsId: 'aws-credentials']
-                ]) {
-
-                    sh """
-                        cd ${env.WORKSPACE_PATH}
-
-                        CLUSTER_NAME=\$(terraform output -raw cluster_name)
-
-                        echo "Verifying EKS cluster: \$CLUSTER_NAME"
-
-                        aws eks describe-cluster \
-                            --name \$CLUSTER_NAME \
-                            --region ${env.AWS_DEFAULT_REGION}
-
-                        echo "✅ EKS cluster verification passed"
-                    """
-                }
             }
         }
 
@@ -271,7 +206,7 @@ pipeline {
             steps {
 
                 echo "=========================================="
-                echo " Backend/EKS Infrastructure Deleted"
+                echo " Frontend S3 Infrastructure Deleted"
                 echo "=========================================="
 
                 echo "Environment: ${params.ENVIRONMENT}"
@@ -288,11 +223,11 @@ pipeline {
 
                 if (params.ACTION == 'delete') {
 
-                    echo "✅ Backend infrastructure deleted successfully for ${params.ENVIRONMENT}!"
+                    echo "✅ Frontend S3 infrastructure deleted successfully for ${params.ENVIRONMENT}!"
 
                 } else {
 
-                    echo "✅ Backend infrastructure created successfully for ${params.ENVIRONMENT}!"
+                    echo "✅ Frontend S3 infrastructure created successfully for ${params.ENVIRONMENT}!"
                 }
             }
         }
@@ -304,11 +239,11 @@ pipeline {
 
                 if (params.ACTION == 'delete') {
 
-                    echo "❌ Backend infrastructure deletion failed for ${params.ENVIRONMENT}"
+                    echo "❌ Frontend S3 infrastructure deletion failed for ${params.ENVIRONMENT}"
 
                 } else {
 
-                    echo "❌ Backend infrastructure creation failed for ${params.ENVIRONMENT}"
+                    echo "❌ Frontend S3 infrastructure creation failed for ${params.ENVIRONMENT}"
                 }
             }
 
@@ -316,3 +251,4 @@ pipeline {
         }
     }
 }
+```

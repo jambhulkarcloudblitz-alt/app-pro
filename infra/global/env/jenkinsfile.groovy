@@ -27,15 +27,46 @@ pipeline {
         }
 
 
-        stage('TERRAFORM INIT') {
+        // stage('TERRAFORM INIT') {
+        //     steps {
+        //         sh '''
+        //             cd infra/global/env/${ENVIRONMENT}
+        //             terraform init
+        //         '''
+        //     }
+        // }
+        stage('Terraform Init') {
             steps {
-                sh '''
-                    cd infra/global/env/${ENVIRONMENT}
-                    terraform init
-                '''
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-credentials']
+                ]) {
+
+                    sh """
+                        cd infra/global/env/${ENVIRONMENT}
+
+                        cat > backend.tf << EOF
+                    terraform {
+                    backend "s3" {
+                        bucket         = "terraform-state-bucket-cbz-kharadi-4"
+                        key            = "global/${params.ENVIRONMENT}/terraform-global.tfstate"
+                        region         = "eu-west-1"
+                        encrypt        = true
+                        dynamodb_table = "terraform-state-lock"
+                        use_lockfile   = true
+                    }
+                    }
+                    EOF
+
+                        rm -rf .terraform
+                        rm -f terraform.tfstate*
+                        rm -f .terraform.lock.hcl
+
+                        terraform init
+                    """
+                }
             }
         }
-
 
         stage('TERRAFORM PLAN') {
             steps {

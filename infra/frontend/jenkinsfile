@@ -1,0 +1,191 @@
+```groovy
+// Simple Jenkins Pipeline for Frontend Infrastructure
+
+pipeline {
+
+    agent any 
+
+
+    parameters {
+
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['dev', 'stage', 'prod'],
+            description: 'Select environment'
+        )
+
+        choice(
+            name: 'ACTION',
+            choices: ['create', 'delete'],
+            description: 'Select create or delete'
+        )
+    }
+
+
+    stages {
+
+        // Get Terraform code from GitHub
+        stage('CHECKOUT') {
+            steps {
+                checkout scm
+            }
+        }
+
+
+        // Initialize Terraform
+        // stage('TERRAFORM INIT') {
+        //     steps {
+        //         withCredentials([
+        //             [$class: 'AmazonWebServicesCredentialsBinding',
+        //              credentialsId: 'aws-credentials']
+        //         ]) {
+
+        //             sh '''
+        //                 cd infra/frontend/env/${ENVIRONMENT}
+
+        //                 terraform init
+        //             '''
+        //         }
+        //     }
+        // }
+            stage('Terraform Init') {
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-credentials']
+                ]) {
+
+                    sh """
+                        cd infra/frontend/env/${ENVIRONMENT}
+
+                        cat > backend.tf << EOF
+                    terraform {
+                    backend "s3" {
+                        bucket         = "terraform-state-bucket-cbz-kharadi-4"
+                        key            = "frontend/${params.ENVIRONMENT}/terraform-global.tfstate"
+                        region         = "eu-west-1"
+                        encrypt        = true
+                        dynamodb_table = "terraform-state-lock"
+                        use_lockfile   = true
+                    }
+                    }
+                    EOF
+
+                        rm -rf .terraform
+                        rm -f terraform.tfstate*
+                        rm -f .terraform.lock.hcl
+
+                        terraform init
+                    """
+                }
+            }
+        }
+
+        // Show what Terraform will do
+        stage('TERRAFORM PLAN') {
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-credentials']
+                ]) {
+
+                    sh '''
+                        cd infra/frontend/env/${ENVIRONMENT}
+
+                        if [ "$ACTION" = "delete" ]; then
+                            terraform plan -destroy
+                        else
+                            terraform plan
+                        fi
+                    '''
+                }
+            }
+        }
+
+
+        // Manual approval
+        stage('APPROVAL') {
+            steps {
+
+                input(
+                    message: "Do you want to ${params.ACTION} ${params.ENVIRONMENT} infrastructure?",
+                    ok: 'APPROVE'
+                )
+            }
+        }
+
+
+        // Create or delete infrastructure
+        stage('TERRAFORM APPLY') {
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-credentials']
+                ]) {
+
+                    sh '''
+                        cd infra/frontend/env/${ENVIRONMENT}
+
+                        if [ "$ACTION" = "delete" ]; then
+                            terraform destroy -auto-approve
+                        else
+                            terraform apply -auto-approve
+                        fi
+                    '''
+                }
+            }
+        }
+
+
+        // Show Terraform outputs
+        stage('OUTPUT') {
+
+            when {
+                expression {
+                    params.ACTION == 'create'
+                }
+            }
+
+            steps {
+
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-credentials']
+                ]) {
+
+                    sh '''
+                        cd infra/frontend/env/${ENVIRONMENT}
+
+                        echo "======================================"
+                        echo " Terraform Outputs"
+                        echo "======================================"
+
+                        terraform output
+                    '''
+                }
+            }
+        }
+    }
+
+
+    post {
+
+        success {
+            echo "======================================"
+            echo " Jenkins Pipeline Successful"
+            echo " Environment: ${params.ENVIRONMENT}"
+            echo " Action: ${params.ACTION}"
+            echo "======================================"
+        }
+
+
+        failure {
+            echo "======================================"
+            echo " Jenkins Pipeline Failed"
+            echo " Environment: ${params.ENVIRONMENT}"
+            echo " Action: ${params.ACTION}"
+            echo "======================================"
+        }
+    }
+}
+```
