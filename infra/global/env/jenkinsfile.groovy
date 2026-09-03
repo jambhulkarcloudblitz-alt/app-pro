@@ -35,38 +35,75 @@ pipeline {
         //         '''
         //     }
         // }
-        stage('Terraform Init') {
-            steps {
-                withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding',
-                     credentialsId: 'aws-credentials']
-                ]) {
 
-                    sh """
-                        cd infra/global/env/${ENVIRONMENT}
 
-                        cat > backend.tf << EOF
-                    terraform {
-                    backend "s3" {
-                        bucket         = "terraform-state-bucket-cbz-kharadi-4"
-                        key            = "global/${params.ENVIRONMENT}/terraform-global.tfstate"
-                        region         = "eu-west-1"
-                        encrypt        = true
-                        dynamodb_table = "terraform-state-lock"
-                        use_lockfile   = true
-                    }
-                    }
-                    EOF
+        // stage('Terraform Init') {
+        //     steps {
+        //         withCredentials([
+        //             [$class: 'AmazonWebServicesCredentialsBinding',
+        //              credentialsId: 'aws-credentials']
+        //         ]) {
 
-                        rm -rf .terraform
-                        rm -f terraform.tfstate*
-                        rm -f .terraform.lock.hcl
+        //             sh """
+        //                 cd infra/global/env/${ENVIRONMENT}
 
-                        terraform init
-                    """
+        //                 cat > backend.tf << EOF
+        //             terraform {
+        //             backend "s3" {
+        //                 bucket         = "terraform-state-bucket-cbz-kharadi-4"
+        //                 key            = "global/${params.ENVIRONMENT}/terraform-global.tfstate"
+        //                 region         = "eu-west-1"
+        //                 encrypt        = true
+        //                 dynamodb_table = "terraform-state-lock"
+        //                 use_lockfile   = true
+        //             }
+        //             }
+        //             EOF
+
+        //                 rm -rf .terraform
+        //                 rm -f terraform.tfstate*
+        //                 rm -f .terraform.lock.hcl
+
+        //                 terraform init
+        //             """
+        //         }
+        //     }
+        // }
+
+        
+stage('Terraform Init') {
+    steps {
+        withCredentials([
+            [$class: 'AmazonWebServicesCredentialsBinding',
+             credentialsId: 'aws-credentials']
+        ]) {
+
+            sh """
+                cd infra/global/env/${ENVIRONMENT}
+
+                cat > backend.tf <<EOF
+                terraform {
+                  backend "s3" {
+                    bucket         = "terraform-state-bucket-cbz-kharadi-4"
+                    key            = "global/${ENVIRONMENT}/terraform-global.tfstate"
+                    region         = "eu-west-1"
+                    encrypt        = true
+                    dynamodb_table = "terraform-state-lock"
+                    use_lockfile   = true
+                  }
                 }
-            }
+                EOF
+
+                rm -rf .terraform
+                rm -f terraform.tfstate*
+                rm -f .terraform.lock.hcl
+
+                terraform init
+            """.stripIndent()
         }
+    }
+}
+
 
         stage('TERRAFORM PLAN') {
             steps {
