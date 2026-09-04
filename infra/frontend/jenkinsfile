@@ -1,4 +1,4 @@
-```groovy
+
 // Simple Jenkins Pipeline for Frontend Infrastructure
 
 pipeline {
@@ -21,15 +21,21 @@ pipeline {
         )
     }
 
-
     stages {
 
-        // Get Terraform code from GitHub
-        stage('CHECKOUT') {
+        stage('PULL') {
             steps {
-                checkout scm
+                git branch: 'dev', url: 'https://github.com/jambhulkarcloudblitz-alt/app-pro.git'
             }
         }
+    // stages {
+
+    //     // Get Terraform code from GitHub
+    //     stage('CHECKOUT') {
+    //         steps {
+    //             checkout scm
+    //         }
+    //     }
 
 
         // Initialize Terraform
@@ -188,4 +194,4 @@ pipeline {
         }
     }
 }
-```
+
