@@ -30,30 +30,36 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
+        // stage('Checkout') {
+        //     steps {
+
+        //         checkout scm
+
+        //         script {
+        //             env.WORKSPACE_PATH =
+        //                 "${WORKSPACE}/infra/backend/env/${params.ENVIRONMENT}"
+
+        //             echo "Environment: ${params.ENVIRONMENT}"
+        //             echo "Terraform directory: ${env.WORKSPACE_PATH}"
+        //         }
+        //     }
+        // }
+
+
+        // stage('Verify Terraform') {
+        //     steps {
+
+        //         sh """
+        //             cd ${env.WORKSPACE_PATH}
+
+        //             terraform version
+        //         """
+        //     }
+        // }
+
+        stage('PULL') {
             steps {
-
-                checkout scm
-
-                script {
-                    env.WORKSPACE_PATH =
-                        "${WORKSPACE}/infra/backend/env/${params.ENVIRONMENT}"
-
-                    echo "Environment: ${params.ENVIRONMENT}"
-                    echo "Terraform directory: ${env.WORKSPACE_PATH}"
-                }
-            }
-        }
-
-
-        stage('Verify Terraform') {
-            steps {
-
-                sh """
-                    cd ${env.WORKSPACE_PATH}
-
-                    terraform version
-                """
+                git branch: 'dev', url: 'https://github.com/jambhulkarcloudblitz-alt/app-pro.git'
             }
         }
 
@@ -74,38 +80,71 @@ pipeline {
         //         }
         //     }
         // }
-        stage('Terraform Init') {
-            steps {
-                withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding',
-                     credentialsId: 'aws-credentials']
-                ]) {
+        // stage('Terraform Init') {
+        //     steps {
+        //         withCredentials([
+        //             [$class: 'AmazonWebServicesCredentialsBinding',
+        //              credentialsId: 'aws-credentials']
+        //         ]) {
 
-                    sh """
-                        cd infra/backend/env/${ENVIRONMENT}
+        //             sh """
+        //                 cd infra/backend/env/${ENVIRONMENT}
 
-                        cat > backend.tf << EOF
-                    terraform {
-                    backend "s3" {
-                        bucket         = "terraform-state-bucket-cbz-kharadi-4"
-                        key            = "backend/${params.ENVIRONMENT}/terraform-global.tfstate"
-                        region         = "eu-west-1"
-                        encrypt        = true
-                        dynamodb_table = "terraform-state-lock"
-                        use_lockfile   = true
-                    }
-                    }
-                    EOF
+        //                 cat > backend.tf << EOF
+        //             terraform {
+        //             backend "s3" {
+        //                 bucket         = "terraform-state-bucket-cbz-kharadi-4"
+        //                 key            = "backend/${params.ENVIRONMENT}/terraform-global.tfstate"
+        //                 region         = "eu-west-1"
+        //                 encrypt        = true
+        //                 dynamodb_table = "terraform-state-lock"
+        //                 use_lockfile   = true
+        //             }
+        //             }
+        //             EOF
 
-                        rm -rf .terraform
-                        rm -f terraform.tfstate*
-                        rm -f .terraform.lock.hcl
+        //                 rm -rf .terraform
+        //                 rm -f terraform.tfstate*
+        //                 rm -f .terraform.lock.hcl
 
-                        terraform init
-                    """
+        //                 terraform init
+        //             """
+        //         }
+        //     }
+        // }
+
+         stage('Terraform Init') {
+    steps {
+        withCredentials([
+            [$class: 'AmazonWebServicesCredentialsBinding',
+             credentialsId: 'aws-credentials']
+        ]) {
+
+            sh """
+                cd infra/backend/env/${ENVIRONMENT}
+
+                cat > backend.tf <<EOF
+                terraform {
+                  backend "s3" {
+                    bucket         = "terraform-state-bucket-cbz-kharadi-4"
+                    key            = "backend/${ENVIRONMENT}/terraform-global.tfstate"
+                    region         = "eu-west-1"
+                    encrypt        = true
+                    dynamodb_table = "terraform-state-lock"
+                    use_lockfile   = true
+                  }
                 }
-            }
+                EOF
+
+                rm -rf .terraform
+                rm -f terraform.tfstate*
+                rm -f .terraform.lock.hcl
+
+                terraform init
+            """.stripIndent()
         }
+    }
+}
 
 
         stage('Terraform Plan') {
