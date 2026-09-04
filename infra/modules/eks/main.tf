@@ -184,13 +184,13 @@ resource "aws_eks_addon" "kube_proxy" {
   tags = var.tags
 }
 
-resource "aws_eks_addon" "ebs_csi_driver" {
-  cluster_name = aws_eks_cluster.main.name
-  addon_name   = "aws-ebs-csi-driver"
-  addon_version = var.ebs_csi_driver_addon_version
+# resource "aws_eks_addon" "ebs_csi_driver" {
+#   cluster_name = aws_eks_cluster.main.name
+#   addon_name   = "aws-ebs-csi-driver"
+#   addon_version = var.ebs_csi_driver_addon_version
 
-  tags = var.tags
-}
+#   tags = var.tags
+# }
 
 # EKS Managed Node Groups
 resource "aws_eks_node_group" "main" {
