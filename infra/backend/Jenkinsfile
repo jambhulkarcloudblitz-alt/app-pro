@@ -1,4 +1,368 @@
 
+// pipeline {
+
+//     agent any
+
+//     parameters {
+
+//         choice(
+//             name: 'ENVIRONMENT',
+//             choices: ['dev', 'stage', 'prod'],
+//             description: 'Target environment for deployment'
+//         )
+
+//         choice(
+//             name: 'ACTION',
+//             choices: ['create', 'delete'],
+//             description: 'Choose create or delete infrastructure'
+//         )
+
+//         booleanParam(
+//             name: 'AUTO_APPROVE',
+//             defaultValue: false,
+//             description: 'Automatically approve Terraform apply'
+//         )
+//     }
+
+//     environment {
+//         AWS_DEFAULT_REGION = 'eu-west-1'
+//     }
+
+//     stages {
+
+//         // stage('Checkout') {
+//         //     steps {
+
+//         //         checkout scm
+
+//         //         script {
+//         //             env.WORKSPACE_PATH =
+//         //                 "${WORKSPACE}/infra/backend/env/${params.ENVIRONMENT}"
+
+//         //             echo "Environment: ${params.ENVIRONMENT}"
+//         //             echo "Terraform directory: ${env.WORKSPACE_PATH}"
+//         //         }
+//         //     }
+//         // }
+
+
+//         // stage('Verify Terraform') {
+//         //     steps {
+
+//         //         sh """
+//         //             cd ${env.WORKSPACE_PATH}
+
+//         //             terraform version
+//         //         """
+//         //     }
+//         // }
+
+//         stage('PULL') {
+//             steps {
+//                 git branch: 'dev', url: 'https://github.com/jambhulkarcloudblitz-alt/app-pro.git'
+//             }
+//         }
+
+
+//         // stage('Terraform Init') {
+//         //     steps {
+
+//         //         withCredentials([
+//         //             [$class: 'AmazonWebServicesCredentialsBinding',
+//         //              credentialsId: 'aws-credentials']
+//         //         ]) {
+
+//         //             sh """
+//         //                 cd ${env.WORKSPACE_PATH}
+
+//         //                 terraform init
+//         //             """
+//         //         }
+//         //     }
+//         // }
+//         // stage('Terraform Init') {
+//         //     steps {
+//         //         withCredentials([
+//         //             [$class: 'AmazonWebServicesCredentialsBinding',
+//         //              credentialsId: 'aws-credentials']
+//         //         ]) {
+
+//         //             sh """
+//         //                 cd infra/backend/env/${ENVIRONMENT}
+
+//         //                 cat > backend.tf << EOF
+//         //             terraform {
+//         //             backend "s3" {
+//         //                 bucket         = "terraform-state-bucket-cbz-kharadi-4"
+//         //                 key            = "backend/${params.ENVIRONMENT}/terraform-global.tfstate"
+//         //                 region         = "eu-west-1"
+//         //                 encrypt        = true
+//         //                 dynamodb_table = "terraform-state-lock"
+//         //                 use_lockfile   = true
+//         //             }
+//         //             }
+//         //             EOF
+
+//         //                 rm -rf .terraform
+//         //                 rm -f terraform.tfstate*
+//         //                 rm -f .terraform.lock.hcl
+
+//         //                 terraform init
+//         //             """
+//         //         }
+//         //     }
+//         // }
+
+//          stage('Terraform Init') {
+//     steps {
+//         withCredentials([
+//             [$class: 'AmazonWebServicesCredentialsBinding',
+//              credentialsId: 'aws-credentials']
+//         ]) {
+
+//             sh """
+//                 cd infra/backend/env/${ENVIRONMENT}
+
+//                 cat > backend.tf <<EOF
+//                 terraform {
+//                   backend "s3" {
+//                     bucket         = "terraform-state-bucket-cbz-kharadi-4"
+//                     key            = "backend/${ENVIRONMENT}/terraform-global.tfstate"
+//                     region         = "eu-west-1"
+//                     encrypt        = true
+//                     dynamodb_table = "terraform-state-lock"
+//                     use_lockfile   = true
+//                   }
+//                 }
+//                 EOF
+
+//                 rm -rf .terraform
+//                 rm -f terraform.tfstate*
+//                 rm -f .terraform.lock.hcl
+
+//                 terraform init
+//             """.stripIndent()
+//         }
+//     }
+// }
+
+
+//         stage('Terraform Plan') {
+//             steps {
+
+//                 withCredentials([
+//                     [$class: 'AmazonWebServicesCredentialsBinding',
+//                      credentialsId: 'aws-credentials']
+//                 ]) {
+
+//                     script {
+
+//                         if (params.ACTION == 'delete') {
+
+//                             sh """
+//                                 cd ${env.WORKSPACE_PATH}
+
+//                                 terraform plan -destroy
+//                             """
+
+//                         } else {
+
+//                             sh """
+//                                 cd ${env.WORKSPACE_PATH}
+
+//                                 terraform plan
+//                             """
+//                         }
+//                     }
+//                 }
+//             }
+//         }
+
+
+//         stage('Terraform Apply') {
+//             steps {
+
+//                 withCredentials([
+//                     [$class: 'AmazonWebServicesCredentialsBinding',
+//                      credentialsId: 'aws-credentials']
+//                 ]) {
+
+//                     script {
+
+//                         if (params.AUTO_APPROVE) {
+
+//                             if (params.ACTION == 'delete') {
+
+//                                 sh """
+//                                     cd ${env.WORKSPACE_PATH}
+
+//                                     terraform destroy -auto-approve
+//                                 """
+
+//                             } else {
+
+//                                 sh """
+//                                     cd ${env.WORKSPACE_PATH}
+
+//                                     terraform apply -auto-approve
+//                                 """
+//                             }
+
+//                         } else {
+
+//                             if (params.ACTION == 'delete') {
+
+//                                 input(
+//                                     message: "⚠️ DELETE Backend/EKS infrastructure for ${params.ENVIRONMENT}?",
+//                                     ok: 'Yes, Delete'
+//                                 )
+
+//                                 sh """
+//                                     cd ${env.WORKSPACE_PATH}
+
+//                                     terraform destroy -auto-approve
+//                                 """
+
+//                             } else {
+
+//                                 input(
+//                                     message: "Apply Backend/EKS changes for ${params.ENVIRONMENT}?",
+//                                     ok: 'Apply'
+//                                 )
+
+//                                 sh """
+//                                     cd ${env.WORKSPACE_PATH}
+
+//                                     terraform apply -auto-approve
+//                                 """
+//                             }
+//                         }
+//                     }
+//                 }
+//             }
+//         }
+
+
+//         stage('Output Values') {
+
+//             when {
+//                 expression {
+//                     params.ACTION == 'create'
+//                 }
+//             }
+
+//             steps {
+
+//                 sh """
+//                     cd ${env.WORKSPACE_PATH}
+
+//                     echo "=========================================="
+//                     echo " Backend/EKS Infrastructure Created"
+//                     echo "=========================================="
+
+//                     terraform output
+//                 """
+//             }
+//         }
+
+
+//         stage('Verify EKS Cluster') {
+
+//             when {
+//                 expression {
+//                     params.ACTION == 'create'
+//                 }
+//             }
+
+//             steps {
+
+//                 withCredentials([
+//                     [$class: 'AmazonWebServicesCredentialsBinding',
+//                      credentialsId: 'aws-credentials']
+//                 ]) {
+
+//                     sh """
+//                         cd ${env.WORKSPACE_PATH}
+
+//                         CLUSTER_NAME=\$(terraform output -raw cluster_name)
+
+//                         echo "Verifying EKS cluster: \$CLUSTER_NAME"
+
+//                         aws eks describe-cluster \
+//                             --name \$CLUSTER_NAME \
+//                             --region ${env.AWS_DEFAULT_REGION}
+
+//                         echo "✅ EKS cluster verification passed"
+//                     """
+//                 }
+//             }
+//         }
+
+
+//         stage('Delete Confirmation') {
+
+//             when {
+//                 expression {
+//                     params.ACTION == 'delete'
+//                 }
+//             }
+
+//             steps {
+
+//                 echo "=========================================="
+//                 echo " Backend/EKS Infrastructure Deleted"
+//                 echo "=========================================="
+
+//                 echo "Environment: ${params.ENVIRONMENT}"
+//             }
+//         }
+//     }
+
+
+//     post {
+
+//         success {
+
+//             script {
+
+//                 if (params.ACTION == 'delete') {
+
+//                     echo "✅ Backend infrastructure deleted successfully for ${params.ENVIRONMENT}!"
+
+//                 } else {
+
+//                     echo "✅ Backend infrastructure created successfully for ${params.ENVIRONMENT}!"
+//                 }
+//             }
+//         }
+
+
+//         failure {
+
+//             script {
+
+//                 if (params.ACTION == 'delete') {
+
+//                     echo "❌ Backend infrastructure deletion failed for ${params.ENVIRONMENT}"
+
+//                 } else {
+
+//                     echo "❌ Backend infrastructure creation failed for ${params.ENVIRONMENT}"
+//                 }
+//             }
+
+//             echo "Check the Jenkins build logs for more details."
+//         }
+//     }
+// }
+
+
+
+
+
+
+// Simple Jenkins Pipeline for Backend Infrastructure
+
 pipeline {
 
     agent any
@@ -8,55 +372,19 @@ pipeline {
         choice(
             name: 'ENVIRONMENT',
             choices: ['dev', 'stage', 'prod'],
-            description: 'Target environment for deployment'
+            description: 'Select environment'
         )
 
         choice(
             name: 'ACTION',
             choices: ['create', 'delete'],
-            description: 'Choose create or delete infrastructure'
+            description: 'Select create or delete'
         )
-
-        booleanParam(
-            name: 'AUTO_APPROVE',
-            defaultValue: false,
-            description: 'Automatically approve Terraform apply'
-        )
-    }
-
-    environment {
-        AWS_DEFAULT_REGION = 'eu-west-1'
     }
 
     stages {
 
-        // stage('Checkout') {
-        //     steps {
-
-        //         checkout scm
-
-        //         script {
-        //             env.WORKSPACE_PATH =
-        //                 "${WORKSPACE}/infra/backend/env/${params.ENVIRONMENT}"
-
-        //             echo "Environment: ${params.ENVIRONMENT}"
-        //             echo "Terraform directory: ${env.WORKSPACE_PATH}"
-        //         }
-        //     }
-        // }
-
-
-        // stage('Verify Terraform') {
-        //     steps {
-
-        //         sh """
-        //             cd ${env.WORKSPACE_PATH}
-
-        //             terraform version
-        //         """
-        //     }
-        // }
-
+        // Get Terraform code from GitHub
         stage('PULL') {
             steps {
                 git branch: 'dev', url: 'https://github.com/jambhulkarcloudblitz-alt/app-pro.git'
@@ -64,216 +392,8 @@ pipeline {
         }
 
 
-        // stage('Terraform Init') {
-        //     steps {
-
-        //         withCredentials([
-        //             [$class: 'AmazonWebServicesCredentialsBinding',
-        //              credentialsId: 'aws-credentials']
-        //         ]) {
-
-        //             sh """
-        //                 cd ${env.WORKSPACE_PATH}
-
-        //                 terraform init
-        //             """
-        //         }
-        //     }
-        // }
-        // stage('Terraform Init') {
-        //     steps {
-        //         withCredentials([
-        //             [$class: 'AmazonWebServicesCredentialsBinding',
-        //              credentialsId: 'aws-credentials']
-        //         ]) {
-
-        //             sh """
-        //                 cd infra/backend/env/${ENVIRONMENT}
-
-        //                 cat > backend.tf << EOF
-        //             terraform {
-        //             backend "s3" {
-        //                 bucket         = "terraform-state-bucket-cbz-kharadi-4"
-        //                 key            = "backend/${params.ENVIRONMENT}/terraform-global.tfstate"
-        //                 region         = "eu-west-1"
-        //                 encrypt        = true
-        //                 dynamodb_table = "terraform-state-lock"
-        //                 use_lockfile   = true
-        //             }
-        //             }
-        //             EOF
-
-        //                 rm -rf .terraform
-        //                 rm -f terraform.tfstate*
-        //                 rm -f .terraform.lock.hcl
-
-        //                 terraform init
-        //             """
-        //         }
-        //     }
-        // }
-
-         stage('Terraform Init') {
-    steps {
-        withCredentials([
-            [$class: 'AmazonWebServicesCredentialsBinding',
-             credentialsId: 'aws-credentials']
-        ]) {
-
-            sh """
-                cd infra/backend/env/${ENVIRONMENT}
-
-                cat > backend.tf <<EOF
-                terraform {
-                  backend "s3" {
-                    bucket         = "terraform-state-bucket-cbz-kharadi-4"
-                    key            = "backend/${ENVIRONMENT}/terraform-global.tfstate"
-                    region         = "eu-west-1"
-                    encrypt        = true
-                    dynamodb_table = "terraform-state-lock"
-                    use_lockfile   = true
-                  }
-                }
-                EOF
-
-                rm -rf .terraform
-                rm -f terraform.tfstate*
-                rm -f .terraform.lock.hcl
-
-                terraform init
-            """.stripIndent()
-        }
-    }
-}
-
-
-        stage('Terraform Plan') {
-            steps {
-
-                withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding',
-                     credentialsId: 'aws-credentials']
-                ]) {
-
-                    script {
-
-                        if (params.ACTION == 'delete') {
-
-                            sh """
-                                cd ${env.WORKSPACE_PATH}
-
-                                terraform plan -destroy
-                            """
-
-                        } else {
-
-                            sh """
-                                cd ${env.WORKSPACE_PATH}
-
-                                terraform plan
-                            """
-                        }
-                    }
-                }
-            }
-        }
-
-
-        stage('Terraform Apply') {
-            steps {
-
-                withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding',
-                     credentialsId: 'aws-credentials']
-                ]) {
-
-                    script {
-
-                        if (params.AUTO_APPROVE) {
-
-                            if (params.ACTION == 'delete') {
-
-                                sh """
-                                    cd ${env.WORKSPACE_PATH}
-
-                                    terraform destroy -auto-approve
-                                """
-
-                            } else {
-
-                                sh """
-                                    cd ${env.WORKSPACE_PATH}
-
-                                    terraform apply -auto-approve
-                                """
-                            }
-
-                        } else {
-
-                            if (params.ACTION == 'delete') {
-
-                                input(
-                                    message: "⚠️ DELETE Backend/EKS infrastructure for ${params.ENVIRONMENT}?",
-                                    ok: 'Yes, Delete'
-                                )
-
-                                sh """
-                                    cd ${env.WORKSPACE_PATH}
-
-                                    terraform destroy -auto-approve
-                                """
-
-                            } else {
-
-                                input(
-                                    message: "Apply Backend/EKS changes for ${params.ENVIRONMENT}?",
-                                    ok: 'Apply'
-                                )
-
-                                sh """
-                                    cd ${env.WORKSPACE_PATH}
-
-                                    terraform apply -auto-approve
-                                """
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-
-        stage('Output Values') {
-
-            when {
-                expression {
-                    params.ACTION == 'create'
-                }
-            }
-
-            steps {
-
-                sh """
-                    cd ${env.WORKSPACE_PATH}
-
-                    echo "=========================================="
-                    echo " Backend/EKS Infrastructure Created"
-                    echo "=========================================="
-
-                    terraform output
-                """
-            }
-        }
-
-
-        stage('Verify EKS Cluster') {
-
-            when {
-                expression {
-                    params.ACTION == 'create'
-                }
-            }
-
+        // Initialize Terraform
+        stage('Terraform Init') {
             steps {
 
                 withCredentials([
@@ -282,38 +402,112 @@ pipeline {
                 ]) {
 
                     sh """
-                        cd ${env.WORKSPACE_PATH}
+                        cd infra/backend/env/${ENVIRONMENT}
 
-                        CLUSTER_NAME=\$(terraform output -raw cluster_name)
+                        printf '%s\\n' \\
+                          'terraform {' \\
+                          '  backend "s3" {' \\
+                          '    bucket       = "terraform-state-bucket-cbz-kharadi-4"' \\
+                          '    key          = "backend/${ENVIRONMENT}/terraform-global.tfstate"' \\
+                          '    region       = "eu-west-1"' \\
+                          '    encrypt      = true' \\
+                          '    use_lockfile = true' \\
+                          '  }' \\
+                          '}' > backend.tf
 
-                        echo "Verifying EKS cluster: \$CLUSTER_NAME"
+                        rm -rf .terraform
 
-                        aws eks describe-cluster \
-                            --name \$CLUSTER_NAME \
-                            --region ${env.AWS_DEFAULT_REGION}
-
-                        echo "✅ EKS cluster verification passed"
+                        terraform init
                     """
                 }
             }
         }
 
 
-        stage('Delete Confirmation') {
+        // Show what Terraform will do
+        stage('TERRAFORM PLAN') {
+            steps {
+
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-credentials']
+                ]) {
+
+                    sh '''
+                        cd infra/backend/env/${ENVIRONMENT}
+
+                        if [ "$ACTION" = "delete" ]; then
+                            terraform plan -destroy
+                        else
+                            terraform plan
+                        fi
+                    '''
+                }
+            }
+        }
+
+
+        // Manual approval
+        stage('APPROVAL') {
+            steps {
+
+                input(
+                    message: "Do you want to ${params.ACTION} ${params.ENVIRONMENT} infrastructure?",
+                    ok: 'APPROVE'
+                )
+            }
+        }
+
+
+        // Create or delete infrastructure
+        stage('TERRAFORM APPLY') {
+            steps {
+
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-credentials']
+                ]) {
+
+                    sh '''
+                        cd infra/backend/env/${ENVIRONMENT}
+
+                        if [ "$ACTION" = "delete" ]; then
+                            terraform destroy -auto-approve
+                        else
+                            terraform apply -auto-approve
+                        fi
+                    '''
+                }
+            }
+        }
+
+
+        // Show Terraform outputs
+        stage('OUTPUT') {
 
             when {
                 expression {
-                    params.ACTION == 'delete'
+                    params.ACTION == 'create'
                 }
             }
 
             steps {
 
-                echo "=========================================="
-                echo " Backend/EKS Infrastructure Deleted"
-                echo "=========================================="
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-credentials']
+                ]) {
 
-                echo "Environment: ${params.ENVIRONMENT}"
+                    sh '''
+                        cd infra/backend/env/${ENVIRONMENT}
+
+                        echo "======================================"
+                        echo " Terraform Outputs"
+                        echo "======================================"
+
+                        terraform output
+                    '''
+                }
             }
         }
     }
@@ -322,36 +516,20 @@ pipeline {
     post {
 
         success {
-
-            script {
-
-                if (params.ACTION == 'delete') {
-
-                    echo "✅ Backend infrastructure deleted successfully for ${params.ENVIRONMENT}!"
-
-                } else {
-
-                    echo "✅ Backend infrastructure created successfully for ${params.ENVIRONMENT}!"
-                }
-            }
+            echo "======================================"
+            echo " Jenkins Pipeline Successful"
+            echo " Environment: ${params.ENVIRONMENT}"
+            echo " Action: ${params.ACTION}"
+            echo "======================================"
         }
 
 
         failure {
-
-            script {
-
-                if (params.ACTION == 'delete') {
-
-                    echo "❌ Backend infrastructure deletion failed for ${params.ENVIRONMENT}"
-
-                } else {
-
-                    echo "❌ Backend infrastructure creation failed for ${params.ENVIRONMENT}"
-                }
-            }
-
-            echo "Check the Jenkins build logs for more details."
+            echo "======================================"
+            echo " Jenkins Pipeline Failed"
+            echo " Environment: ${params.ENVIRONMENT}"
+            echo " Action: ${params.ACTION}"
+            echo "======================================"
         }
     }
 }
