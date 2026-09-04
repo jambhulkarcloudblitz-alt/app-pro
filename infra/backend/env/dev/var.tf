@@ -81,7 +81,7 @@ variable "node_groups" {
   default = {
     main = {
       instance_types = ["c7i-flex.large"]
-      ami_type       = "AL2_x86_64"
+      ami_type       = "AL2023_x86_64_STANDARD"
       capacity_type  = "ON_DEMAND"
       scaling_config = {
         desired_size = 2
