@@ -8,7 +8,7 @@ variable "cluster_name" {
 variable "kubernetes_version" {
   description = "Kubernetes version for the EKS cluster"
   type        = string
-  default     = "1.28"
+  default     = "1.35"
 }
 
 variable "vpc_id" {
@@ -51,7 +51,7 @@ variable "node_groups" {
   }))
   default = {
     main = {
-      instance_types = ["t3.medium"]
+      instance_types = ["c7i-flex.large"]
       ami_type       = "AL2_x86_64"
       capacity_type  = "ON_DEMAND"
       scaling_config = {
