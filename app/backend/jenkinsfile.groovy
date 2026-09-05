@@ -42,7 +42,7 @@ pipeline {
         stage ('FRONTEND-BUILD-DOCKERFILE') {
             steps {
                 sh '''cd app/backend/
-                    docker build -t shubhamjambhulkar07/easy-frontend:latest .'''
+                    docker build -t 674199615853.dkr.ecr.eu-north-1.amazonaws.com/easy-frontend .'''
             }
         }
 
@@ -53,10 +53,13 @@ pipeline {
                      credentialsId: 'aws-credentials']
                 ]) {
                     sh '''
-                        aws ecr get-login-password --region $AWS_REGION |
-                        docker login --username AWS --password-stdin $ECR_REGISTRY
+                        // aws ecr get-login-password --region $AWS_REGION |
+                        // docker login --username AWS --password-stdin $ECR_REGISTRY
 
-                        docker push shubhamjambhulkar07/easy-frontend:latest
+                        aws ecr get-login-password --region eu-north-1 | 
+                        docker login --username AWS --password-stdin 674199615853.dkr.ecr.eu-north-1.amazonaws.com
+
+                        docker push 674199615853.dkr.ecr.eu-north-1.amazonaws.com/easy-frontend
                     '''
                 }
             }
