@@ -40,7 +40,7 @@ pipeline {
                 ]) {
                     sh '''
                         
-                        kubectl apply -f App/database/k8s/
+                        kubectl apply -f app/database/k8s/
                     '''
                 }
             }

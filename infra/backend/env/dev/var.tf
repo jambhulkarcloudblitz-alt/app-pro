@@ -3,7 +3,7 @@
 variable "aws_region" {
   description = "AWS region"
   type        = string
-  default     = "us-west-2"
+  default     = "eu-north-1"
 }
 
 variable "vpc_name" {
