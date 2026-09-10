@@ -1,10 +1,9 @@
-```groovy
 pipeline {
 
     agent any
 
     environment {
-        AWS_REGION = 'eu-west-1'
+        AWS_REGION = 'eu-north-1'
         EKS_CLUSTER_NAME = 'backend-dev-cluster'
     }
 
@@ -63,4 +62,4 @@ pipeline {
 
     }
 }
-```
+
