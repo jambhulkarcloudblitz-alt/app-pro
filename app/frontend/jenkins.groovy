@@ -31,10 +31,7 @@ pipeline {
                 sh '''
                     cd app/frontend
 
-                    // export VITE_AUTH_API="https://api.junioraicoders.com/api/auth"
-                    // export VITE_COURSE_API="https://api.junioraicoders.com/api/courses"
-                    // export VITE_ENROLL_API="https://api.junioraicoders.com/api/enroll"
-
+                   
                     npm run build
                 '''
             }
