@@ -107,6 +107,10 @@ stage('Terraform Init') {
 
         stage('TERRAFORM PLAN') {
             steps {
+                withCredentials([
+            [$class: 'AmazonWebServicesCredentialsBinding',
+             credentialsId: 'aws-credentials']
+        ]) {
                 sh '''
                     cd infra/global/env/${ENVIRONMENT}
 
@@ -130,6 +134,11 @@ stage('Terraform Init') {
 
         stage('TERRAFORM APPLY') {
             steps {
+                withCredentials([
+            [$class: 'AmazonWebServicesCredentialsBinding',
+             credentialsId: 'aws-credentials']
+        ]) {
+
                 sh '''
                     cd infra/global/env/${ENVIRONMENT}
 
