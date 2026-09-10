@@ -122,6 +122,8 @@ stage('Terraform Init') {
                 '''
             }
         }
+        
+        }
 
 
         stage('APPROVAL') {
@@ -164,5 +166,6 @@ stage('Terraform Init') {
             echo "❌ Terraform deployment failed"
         }
     }
+}
 }
 
