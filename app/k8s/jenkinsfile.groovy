@@ -3,7 +3,7 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = 'us-west-2'
+        AWS_REGION = 'eu-north-1'
         EKS_CLUSTER_NAME = 'backend-dev-cluster'
     }
 

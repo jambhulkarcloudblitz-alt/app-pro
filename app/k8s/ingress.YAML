@@ -6,19 +6,19 @@ metadata:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
 
-    # HTTP + HTTPS listeners
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    # HTTP + HTTPS listeners ,{"HTTPS":443}
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
 
-    # ACM certificate
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-north-1:717728193228:certificate/0732fcb6-ad86-4090-9f33-f90616825dc2
-    # Redirect HTTP -> HTTPS
-    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    # # ACM certificate
+    # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-north-1:717728193228:certificate/0732fcb6-ad86-4090-9f33-f90616825dc2
+    # # Redirect HTTP -> HTTPS
+    # alb.ingress.kubernetes.io/ssl-redirect: "443"
 
 spec:
   ingressClassName: alb
 
   rules:
-    - host: api.classproject.shop
+    - host: api.aptupdate.store
       http:
         paths:
           - path: /
