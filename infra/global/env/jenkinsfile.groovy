@@ -154,6 +154,7 @@ stage('Terraform Init') {
         }
 
     }
+    }
 
 
     post {
@@ -167,5 +168,5 @@ stage('Terraform Init') {
         }
     }
 }
-}
+
 
