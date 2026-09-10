@@ -5,8 +5,8 @@ pipeline {
     environment {
         AWS_REGION = 'eu-north-1'
         EKS_CLUSTER_NAME = 'backend-dev-cluster'
-        // ECR_REGISTRY = '546736804167.dkr.ecr.eu-west-1.amazonaws.com'
-        // IMAGE_NAME = 'cloudblitz/auth-service'
+        ECR_REGISTRY = '725166342186.dkr.ecr.eu-north-1.amazonaws.com/easy-backend'
+        IMAGE_NAME = 'easy-backend'
     }
 
     stages {
@@ -42,7 +42,7 @@ pipeline {
         stage ('FRONTEND-BUILD-DOCKERFILE') {
             steps {
                 sh '''cd app/backend/
-                    docker build -t 674199615853.dkr.ecr.eu-north-1.amazonaws.com/easy-frontend .'''
+                    docker build -t 725166342186.dkr.ecr.eu-north-1.amazonaws.com/easy-backend .'''
             }
         }
 
@@ -56,10 +56,11 @@ pipeline {
                         // aws ecr get-login-password --region $AWS_REGION |
                         // docker login --username AWS --password-stdin $ECR_REGISTRY
 
+            
                         aws ecr get-login-password --region eu-north-1 | 
-                        docker login --username AWS --password-stdin 674199615853.dkr.ecr.eu-north-1.amazonaws.com
+                        docker login --username AWS --password-stdin 725166342186.dkr.ecr.eu-north-1.amazonaws.com
 
-                        docker push 674199615853.dkr.ecr.eu-north-1.amazonaws.com/easy-frontend
+                        docker push 725166342186.dkr.ecr.eu-north-1.amazonaws.com/easy-backend
                     '''
                 }
             }
