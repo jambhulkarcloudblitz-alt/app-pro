@@ -4,8 +4,8 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = 'eu-west-1'
-        S3_BUCKET = 'classproject.shop'
+        AWS_REGION = 'eu-north-1'
+        S3_BUCKET = 'aptupdate.store'
     }
 
     stages {
